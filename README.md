@@ -19,5 +19,4 @@ npm run build
 
 ## GitHub Pages
 
-将项目推送到 GitHub 仓库的 `main` 分支。在仓库 **Settings → Pages → Build and deployment** 中将 **Source** 设为 **GitHub Actions**。工作流会自动构建并部署 `dist`。页面使用相对资源路径和 Hash 路由，兼容仓库子路径。
-
+仓库根目录已包含编译好的 `index.html` 和 `assets/`，可通过 **Deploy from a branch → main / (root)** 发布。项目也包含 GitHub Actions 工作流，可将 **Source** 设为 **GitHub Actions**，让后续提交自动构建并部署 `dist`。页面使用相对资源路径和 Hash 路由，兼容仓库子路径。

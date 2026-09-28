@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Dropzone, EmptyResult, Field, FileList, Panel, Status, ToolHeader } from '../components'
 import { compressImage, convertImage, downloadZip, formatBytes, imageTypes, splitName, uniqueNames } from '../lib/files'
+import { recordToolComplete } from '../lib/analyticsProvider'
 
 type PhotoResult = { file: File; name: string; blob: Blob; reached: boolean }
 
@@ -26,7 +27,7 @@ export function PracticePage({ compact = false }: { compact?: boolean }) {
         next.push({ file: files[i], name: names[i], blob, reached })
         setMessage(`正在处理 ${i + 1} / ${files.length} 张图片…`)
       }
-      setResults(next); setState('done'); setMessage(next.some(item => !item.reached) ? '已完成。有图片未达到目标大小，请查看结果。' : '全部完成，可以下载。')
+      setResults(next); setState('done'); setMessage(next.some(item => !item.reached) ? '已完成。有图片未达到目标大小，请查看结果。' : '全部完成，可以下载。'); void recordToolComplete(compact ? 'compress' : 'practice')
     } catch (error) { setState('error'); setMessage(error instanceof Error ? error.message : '图片处理失败，请重试。') }
   }
   async function save() {
@@ -49,7 +50,7 @@ export function RenamePage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const names = uniqueNames(files, template)
-  async function save() { setBusy(true); setError(''); try { await downloadZip(files.map((file, i) => ({ name: names[i], data: file })), '批量重命名.zip') } catch { setError('打包失败，请重试。') } finally { setBusy(false) } }
+  async function save() { setBusy(true); setError(''); try { await downloadZip(files.map((file, i) => ({ name: names[i], data: file })), '批量重命名.zip'); void recordToolComplete('rename') } catch { setError('打包失败，请重试。') } finally { setBusy(false) } }
   return <><ToolHeader title="批量文件重命名" description="给一批文件统一命名，先预览，再打包下载。" /><div className="workspace-grid"><div className="workspace-main"><Panel title="1. 添加文件"><Dropzone onFiles={incoming => setFiles(current => [...current, ...incoming])} /><FileList files={files} names={names} onRemove={i => setFiles(files.filter((_, index) => index !== i))} /></Panel><Panel title="2. 命名规则"><Field label="命名模板" note="可使用 {序号} 和 {原文件名}；重复名称会自动加编号。"><input value={template} onChange={e => setTemplate(e.target.value)} /></Field><button className="primary-button" disabled={!files.length || busy} onClick={save}>{busy ? '打包中…' : '下载重命名 ZIP'} <span>→</span></button>{error && <Status kind="error">{error}</Status>}</Panel></div><div className="workspace-side"><Panel title="命名预览" hint={`${files.length} 个文件`}>{files.length ? <div className="preview-list">{files.map((file, i) => <div key={i}><span>{file.name}</span><b>↓</b><strong>{names[i]}</strong></div>)}</div> : <EmptyResult text="添加文件后，这里会显示新旧文件名。" />}</Panel></div></div></>
 }
 
@@ -58,6 +59,6 @@ export function ConvertPage() {
   const [type, setType] = useState('image/png')
   const [state, setState] = useState<'idle' | 'busy' | 'done' | 'error'>('idle')
   const [message, setMessage] = useState('')
-  async function run() { setState('busy'); setMessage('正在转换图片…'); try { const ext = type === 'image/jpeg' ? '.jpg' : type === 'image/webp' ? '.webp' : '.png'; const entries = []; const used = new Set<string>(); for (const file of files) { const stem = splitName(file.name).stem; let name = `${stem}${ext}`; let suffix = 2; while (used.has(name.toLowerCase())) name = `${stem}-${suffix++}${ext}`; used.add(name.toLowerCase()); entries.push({ name, data: await convertImage(file, type) }) } await downloadZip(entries, '转换后的图片.zip'); setState('done'); setMessage('转换完成，下载已开始。') } catch { setState('error'); setMessage('转换失败，请检查图片格式。') } }
+  async function run() { setState('busy'); setMessage('正在转换图片…'); try { const ext = type === 'image/jpeg' ? '.jpg' : type === 'image/webp' ? '.webp' : '.png'; const entries = []; const used = new Set<string>(); for (const file of files) { const stem = splitName(file.name).stem; let name = `${stem}${ext}`; let suffix = 2; while (used.has(name.toLowerCase())) name = `${stem}-${suffix++}${ext}`; used.add(name.toLowerCase()); entries.push({ name, data: await convertImage(file, type) }) } await downloadZip(entries, '转换后的图片.zip'); setState('done'); setMessage('转换完成，下载已开始。'); void recordToolComplete('convert') } catch { setState('error'); setMessage('转换失败，请检查图片格式。') } }
   return <><ToolHeader title="图片格式转换" description="JPG、PNG 和 WebP 批量互转，下载仍按原文件名整理。" /><div className="workspace-grid"><div className="workspace-main"><Panel title="1. 添加图片"><Dropzone accept="image/jpeg,image/png,image/webp" onFiles={incoming => { const valid = accepted(incoming); setFiles(current => [...current, ...valid]); if (!valid.length) { setState('error'); setMessage('请选择 JPG、PNG 或 WebP 图片。') } }} /><FileList files={files} onRemove={i => setFiles(files.filter((_, index) => index !== i))} /></Panel><Panel title="2. 目标格式"><Field label="转换为"><select value={type} onChange={e => setType(e.target.value)}><option value="image/png">PNG</option><option value="image/jpeg">JPG</option><option value="image/webp">WebP</option></select></Field><button className="primary-button" disabled={!files.length || state === 'busy'} onClick={run}>{state === 'busy' ? '转换中…' : '转换并下载'} <span>→</span></button></Panel></div><div className="workspace-side"><Panel title="处理状态">{state === 'idle' ? <EmptyResult /> : <Status kind={state}>{message}</Status>}</Panel><div className="tip-card"><span>✦</span><p>转换为 JPG 时，透明背景会填充为白色。</p></div></div></div></>
 }

@@ -58,13 +58,13 @@ export function recordVisit(): Promise<void> {
   if (!visitRequest) {
     const sessionId = getId(sessionStorage, SESSION_KEY)
     const visitorId = getId(localStorage, VISITOR_KEY)
-    visitRequest = rpc('campuskit_record_event', {
+    visitRequest = rpc<boolean>('campuskit_record_event', {
       p_event_id: sessionId,
       p_session_id: sessionId,
       p_visitor_id: visitorId,
       p_event_type: 'visit',
       p_tool: null,
-    }).then(() => undefined).catch(error => { visitRequest = undefined; throw error })
+    }).then(recorded => { if (!recorded) throw new Error('访问事件未被统计服务接受。') }).catch(error => { visitRequest = undefined; throw error })
   }
   return visitRequest
 }
@@ -73,13 +73,14 @@ export async function recordToolComplete(tool: ToolId): Promise<void> {
   if (!analyticsConfigured) return
   try {
     await recordVisit()
-    await rpc('campuskit_record_event', {
+    const recorded = await rpc<boolean>('campuskit_record_event', {
       p_event_id: crypto.randomUUID(),
       p_session_id: getId(sessionStorage, SESSION_KEY),
       p_visitor_id: getId(localStorage, VISITOR_KEY),
       p_event_type: 'tool_complete',
       p_tool: tool,
     })
+    if (!recorded) throw new Error('工具事件未被统计服务接受。')
   } catch (error) {
     console.warn('CampusKit 统计事件未送达', error)
   }

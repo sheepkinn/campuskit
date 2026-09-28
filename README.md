@@ -23,7 +23,7 @@ npm run build
 
 ## 真实访问统计
 
-访问统计使用 Supabase 保存匿名访问会话与成功完成的工具操作，不上传用户文件或文件名。先在 Supabase 执行 `supabase/migrations/20260928_campuskit_analytics.sql`，再将项目 URL 和 **publishable key** 配置为 `VITE_SUPABASE_URL`、`VITE_SUPABASE_PUBLISHABLE_KEY`。发布前重新运行 `npm run build`，将 `dist/index.html` 与 `dist/assets/` 同步到仓库根目录。不要把 secret key 或 service_role key 放入前端。
+访问统计使用 Supabase 保存匿名访问会话与成功完成的工具操作，不上传用户文件或文件名。项目 URL 和 **publishable key** 已配置在 `.env.production`；构建时会将它们放进公开的浏览器代码。部署前仍需在 Supabase 执行 `supabase/migrations/20260928_campuskit_analytics.sql`，否则统计接口会返回 404。发布前重新运行 `npm run build`，将 `dist/index.html` 与 `dist/assets/` 同步到仓库根目录。不要把 secret key 或 service_role key 放入前端。
 
 若使用 Supabase 的 GitHub Integration 自动部署数据库迁移，请将 Working directory 设为 `.`，并启用 **Deploy to production**；仅授权仓库访问不会自动应用迁移。
 
